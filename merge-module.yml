@@ -1,0 +1,20 @@
+name: Merge Pending Module into YAML
+
+on:
+  push:
+    paths:
+      - 'pending_module.yaml'
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Merge pending_module into kompagnon.yaml
+        run: |
+          cat pending_module.yaml >> kompagnon.yaml
+          git config user.name "kompagnon-bot"
+          git config user.email "bot@kompagnon.local"
+          git add kompagnon.yaml
+          git commit -m "Auto-Merge: neues Modul"
+          git push
