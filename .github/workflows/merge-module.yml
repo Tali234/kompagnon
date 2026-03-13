@@ -9,12 +9,37 @@ jobs:
   merge:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Merge pending_module into kompagnon.yaml
+      - uses: actions/checkout@v4
+
+      - name: Check for real content
+        id: check
         run: |
-          cat pending_module.yaml >> kompagnon.yaml
+          # Ignoriere Kommentarzeilen und leere Zeilen
+          CONTENT=$(grep -v "^#" pending_module.yaml | grep -v "^$" || true)
+          if [ -z "$CONTENT" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Keine neuen Module gefunden – überspringe."
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Merge pending_module into kompagnon.yaml
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          # Neue Module unter die module-Liste anhängen
+          echo "" >> kompagnon.yaml
+          grep -v "^#" pending_module.yaml | grep -v "^$" | sed "s/^/    /" >> kompagnon.yaml
+
+      - name: Clear pending_module.yaml
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          echo "# Hier neue Module eintragen – werden automatisch in kompagnon.yaml gemerged" > pending_module.yaml
+
+      - name: Commit changes
+        if: steps.check.outputs.skip == 'false'
+        run: |
           git config user.name "kompagnon-bot"
           git config user.email "bot@kompagnon.local"
-          git add kompagnon.yaml
-          git commit -m "Auto-Merge: neues Modul"
+          git add kompagnon.yaml pending_module.yaml
+          git commit -m "Auto-Merge: neues Modul integriert, pending geleert"
           git push
